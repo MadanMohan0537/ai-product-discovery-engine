@@ -1,0 +1,19 @@
+services:
+  postgres:
+    image: pgvector/pgvector:pg17
+    environment:
+      POSTGRES_USER: prodmind
+      POSTGRES_PASSWORD: prodmind
+      POSTGRES_DB: discovery
+    ports:
+      - "5432:5432"
+    volumes:
+      - discovery-data:/var/lib/postgresql/data
+      - ./backend/postgres:/docker-entrypoint-initdb.d:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U prodmind -d discovery"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+volumes:
+  discovery-data:
