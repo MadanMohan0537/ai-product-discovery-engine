@@ -1,0 +1,6 @@
+{
+  "$schema":"https://json-schema.org/draft/2020-12/schema",
+  "$id":"https://discovery-engine.dev/schemas/result/1.0",
+  "type":"object","required":["schemaVersion","model","recordCount","opportunityCount","opportunities"],
+  "properties":{"schemaVersion":{"const":"1.0.0"},"model":{"type":"string"},"recordCount":{"type":"integer","minimum":1},"opportunityCount":{"type":"integer","minimum":1},"opportunities":{"type":"array","items":{"type":"object","required":["id","title","problem","score","confidence","evidenceCount","evidence"]}}}
+}
