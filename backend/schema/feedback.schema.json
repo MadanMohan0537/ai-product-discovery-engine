@@ -1,0 +1,6 @@
+{
+  "$schema":"https://json-schema.org/draft/2020-12/schema",
+  "$id":"https://discovery-engine.dev/schemas/feedback/1.0",
+  "type":"object","required":["text"],"additionalProperties":true,
+  "properties":{"id":{"type":"string"},"text":{"type":"string","minLength":1,"maxLength":20000},"source":{"type":"string"},"segment":{"type":"string"},"customerId":{"type":["string","null"]},"timestamp":{"type":"string","format":"date-time"},"metadata":{"type":"object"}}
+}
