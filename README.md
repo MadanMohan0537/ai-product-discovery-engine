@@ -6,11 +6,40 @@
 
 Local-first · Evidence-backed · Transparent scoring · Cloudflare-ready · Zero paid APIs required
 
+[![CI](https://github.com/MadanMohan0537/ai-product-discovery-engine/actions/workflows/ci.yml/badge.svg)](https://github.com/MadanMohan0537/ai-product-discovery-engine/actions/workflows/ci.yml)
+![Node.js 20+](https://img.shields.io/badge/Node.js-20%2B-339933?logo=nodedotjs&logoColor=white)
+![Tests](https://img.shields.io/badge/tests-22%20passing-22c55e)
+![Cloudflare Workers](https://img.shields.io/badge/Cloudflare-Workers-F38020?logo=cloudflare&logoColor=white)
+[![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
+
 </div>
 
 Product teams collect interviews, support tickets, surveys, reviews, sales notes, competitor evidence, and analytics—but synthesis still happens manually across disconnected tools. AI Product Discovery Engine normalizes that evidence, groups recurring problems, generates candidate opportunities, ranks them through an inspectable formula, and preserves the supporting records behind every recommendation.
 
 This is designed as a flagship AI Product Manager portfolio project: it combines product strategy, discovery workflow design, responsible AI boundaries, evaluation, data architecture, and a working full-stack MVP.
+
+## At a glance
+
+| | |
+|---|---|
+| **Problem** | Customer evidence is fragmented and expensive to synthesize manually. |
+| **Users** | Product managers, founders, product analysts, UX researchers, and customer-success teams. |
+| **MVP input** | CSV or JSON feedback records. |
+| **MVP output** | Ranked opportunities with confidence, segments, source counts, experiments, and traceable evidence. |
+| **Default runtime** | Browser-local analysis or a secured Cloudflare Worker. |
+| **Cost posture** | No paid API, hosted model, or database is required for the working baseline. |
+
+## Delivery status
+
+| Capability | Status | Boundary |
+|---|---|---|
+| CSV/JSON ingestion and normalization | Implemented | End-to-end |
+| Discovery pipeline and opportunity scoring | Implemented | Deterministic lexical baseline |
+| Evidence-backed dashboard | Implemented | Local-first, responsive light/dark UI |
+| Worker API and optional D1 history | Implemented | Bearer-token protected |
+| PostgreSQL/pgvector environment | Supplied | Infrastructure only; not wired to the Worker |
+| External SaaS connectors | Planned | Zendesk, Intercom, Slack, Reddit, app stores, analytics |
+| Semantic embedding adapters | Planned | Must outperform the baseline in evaluation |
 
 ## Live product flow
 
@@ -173,6 +202,8 @@ npm run check
 npm run evaluate
 ```
 
+The repository currently has **22 automated tests** covering the algorithms, connectors, opportunity agent, evidence traceability, and HTTP behavior. `npm run check` runs syntax validation and the complete test suite; the GitHub Actions workflow runs the same checks on pushes and pull requests.
+
 The report computes evidence traceability and coverage. The bundled four-record seed validates plumbing only. A real evaluation should add human-labeled theme pairs, opportunity acceptance decisions, evidence-validity audits, cluster stability, and unsupported-claim review.
 
 See [METRICS.md](docs/METRICS.md) for the complete measurement plan.
@@ -185,6 +216,14 @@ See [METRICS.md](docs/METRICS.md) for the complete measurement plan.
 - [Architecture and scaling boundaries](docs/ARCHITECTURE.md)
 
 The opportunity-solution-tree concept informs the product direction: opportunities should connect to a desired product outcome and remain distinct from possible solutions. The MVP therefore recommends experiments but does not silently turn them into roadmap commitments.
+
+## Product principles
+
+- **Evidence before narrative:** every opportunity links back to source records.
+- **Inspectable prioritization:** score components and weights are visible and replaceable.
+- **Human decision ownership:** outputs support discovery; they do not make roadmap decisions.
+- **Baseline before complexity:** semantic models earn adoption through measured improvement.
+- **Privacy by deployment choice:** teams can analyze locally or operate their own secured Worker.
 
 ## Security and privacy
 
