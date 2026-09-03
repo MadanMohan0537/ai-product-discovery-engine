@@ -1,0 +1,6 @@
+[
+  {"id":"1","text":"Onboarding is confusing and setup is hard","source":"support","segment":"New SMB","timestamp":"2026-08-01T00:00:00Z","expectedTheme":"onboarding"},
+  {"id":"2","text":"We need a guided onboarding checklist","source":"interview","segment":"New SMB","timestamp":"2026-08-02T00:00:00Z","expectedTheme":"onboarding"},
+  {"id":"3","text":"Please add SAML SSO for enterprise login","source":"sales","segment":"Enterprise","timestamp":"2026-08-03T00:00:00Z","expectedTheme":"sso"},
+  {"id":"4","text":"SSO login support is missing","source":"zendesk","segment":"Enterprise","timestamp":"2026-08-04T00:00:00Z","expectedTheme":"sso"}
+]
