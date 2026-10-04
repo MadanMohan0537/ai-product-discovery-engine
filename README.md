@@ -8,11 +8,20 @@ Local-first · Evidence-backed · Transparent scoring · Cloudflare-ready · Zer
 
 [![CI](https://github.com/MadanMohan0537/ai-product-discovery-engine/actions/workflows/ci.yml/badge.svg)](https://github.com/MadanMohan0537/ai-product-discovery-engine/actions/workflows/ci.yml)
 ![Node.js 20+](https://img.shields.io/badge/Node.js-20%2B-339933?logo=nodedotjs&logoColor=white)
-![Tests](https://img.shields.io/badge/tests-22%20passing-22c55e)
 ![Cloudflare Workers](https://img.shields.io/badge/Cloudflare-Workers-F38020?logo=cloudflare&logoColor=white)
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
 
 </div>
+
+## First-run review checklist
+
+Import a small, known feedback sample and inspect its normalized records before evaluating opportunity rankings. Open one opportunity and verify that its linked evidence supports the problem statement.
+
+The default discovery pipeline uses transparent, deterministic logic. Optional semantic retrieval does not turn an opportunity score into market validation. Check deduplication, segment coverage and sample size before committing engineering capacity.
+
+For developers, start with [the discovery pipeline](pipelines/discovery.js), [backend configuration](backend/package.json) and [contribution guidance](CONTRIBUTING.md). Run `npm run check` for the build, syntax checks and tests, then `npm run evaluate` for the evaluation fixtures.
+
+
 
 Product teams collect interviews, support tickets, surveys, reviews, sales notes, competitor evidence, and analytics—but synthesis still happens manually across disconnected tools. AI Product Discovery Engine normalizes that evidence, groups recurring problems, generates candidate opportunities, ranks them through an inspectable formula, and preserves the supporting records behind every recommendation.
 
