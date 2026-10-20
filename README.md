@@ -1,138 +1,145 @@
-<div align="center">
-
 # AI Product Discovery Engine
 
-**Turn fragmented customer evidence into ranked, traceable product opportunities.**
-
-Local-first · Evidence-backed · Transparent scoring · Cloudflare-ready · Zero paid APIs required
-
 [![CI](https://github.com/MadanMohan0537/ai-product-discovery-engine/actions/workflows/ci.yml/badge.svg)](https://github.com/MadanMohan0537/ai-product-discovery-engine/actions/workflows/ci.yml)
-![Node.js 20+](https://img.shields.io/badge/Node.js-20%2B-339933?logo=nodedotjs&logoColor=white)
-![Cloudflare Workers](https://img.shields.io/badge/Cloudflare-Workers-F38020?logo=cloudflare&logoColor=white)
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
 
-</div>
+**Turn scattered customer feedback into a ranked list of product opportunities, each linked back to the records that support it.**
 
-## First-run review checklist
+**Live demo:** <https://ai-product-discovery-engine.madanmohanlearning.workers.dev/>. Press **Load sample**, then **Discover opportunities**. The page runs `runDiscovery` in the browser. The deployed `app.js` does not call `fetch` or `/api/`.
 
-Import a small, known feedback sample and inspect its normalized records before evaluating opportunity rankings. Open one opportunity and verify that its linked evidence supports the problem statement.
+`GET /api/health` on that host returned HTTP 200 on 2026-10-20:
 
-The default discovery pipeline uses transparent, deterministic logic. Optional semantic retrieval does not turn an opportunity score into market validation. Check deduplication, segment coverage and sample size before committing engineering capacity.
+```json
+{"status":"ok","service":"ai-product-discovery-engine","persistence":true,"mode":"deterministic-baseline"}
+```
 
-For developers, start with [the discovery pipeline](pipelines/discovery.js), [backend configuration](backend/package.json) and [contribution guidance](CONTRIBUTING.md). Run `npm run check` for the build, syntax checks and tests, then `npm run evaluate` for the evaluation fixtures.
+`persistence: true` means that deployment has a D1 binding. It does not report how many rows are stored.
 
+## 1. Problem and who it's for
 
+Product teams collect interviews, support tickets, surveys, reviews, and sales notes, and synthesis still happens by hand across disconnected tools. The loudest anecdote often wins, and the records behind a later "why this?" are easy to lose.
 
-Product teams collect interviews, support tickets, surveys, reviews, sales notes, competitor evidence, and analytics—but synthesis still happens manually across disconnected tools. AI Product Discovery Engine normalizes that evidence, groups recurring problems, generates candidate opportunities, ranks them through an inspectable formula, and preserves the supporting records behind every recommendation.
+The [PRD](docs/PRD.md) names these intended users and jobs. This repository has no usage data for them.
 
-This is designed as a flagship AI Product Manager portfolio project: it combines product strategy, discovery workflow design, responsible AI boundaries, evaluation, data architecture, and a working full-stack MVP.
-
-## At a glance
-
-| | |
+| Intended users | Job to be done |
 |---|---|
-| **Problem** | Customer evidence is fragmented and expensive to synthesize manually. |
-| **Users** | Product managers, founders, product analysts, UX researchers, and customer-success teams. |
-| **MVP input** | CSV or JSON feedback records. |
-| **MVP output** | Ranked opportunities with confidence, segments, source counts, experiments, and traceable evidence. |
-| **Default runtime** | Browser-local analysis or a secured Cloudflare Worker. |
-| **Cost posture** | No paid API, hosted model, or database is required for the working baseline. |
+| Product managers | Reduce synthesis time and defend discovery decisions with evidence |
+| Founders | Find repeated unmet needs without reading every message |
+| UX researchers | Connect themes to participants and segments |
+| Product analysts | Combine qualitative signals with product evidence |
+| Customer success | Surface recurring friction and retention risk |
 
-## Delivery status
+## 2. Requirements (from the [PRD](docs/PRD.md))
 
-| Capability | Status | Boundary |
+| # | Acceptance criterion | In this repository |
 |---|---|---|
-| CSV/JSON ingestion and normalization | Implemented | End-to-end |
-| Discovery pipeline and opportunity scoring | Implemented | Deterministic lexical baseline |
-| Evidence-backed dashboard | Implemented | Local-first, responsive light/dark UI |
-| Worker API and optional D1 history | Implemented | Bearer-token protected |
-| PostgreSQL/pgvector environment | Supplied | Infrastructure only; not wired to the Worker |
-| External SaaS connectors | Planned | Zendesk, Intercom, Slack, Reddit, app stores, analytics |
-| Semantic embedding adapters | Planned | Must outperform the baseline in evaluation |
+| 1 | Every opportunity cites at least one source record | Met. Each opportunity's `evidence` array is the cluster's records. |
+| 2 | Users can inspect the scoring formula and the component scores | Partial. `scoreOpportunity` in `pipelines/discovery.js` is the formula, and each API opportunity includes `scoreComponents`. The dashboard shows the integer score and does not render the components or the weights. |
+| 3 | Invalid records cannot silently enter the analysis | Met. `normalizeRecord` throws. `POST /api/discover` returns 422, or 413 when the batch is larger than 1,000 records. |
+| 4 | The local demo works without a paid API | Met. The page and the pipeline have no model provider. |
+| 5 | API access fails closed without a token | Met. A missing `API_TOKEN`, or a bearer token that does not match, returns 401. |
+| 6 | The README separates implemented connectors from planned ones | Met by the sections below. |
 
-## Live product flow
+**Non-goals:** approving roadmap work, estimating engineering effort, claiming causal impact, or replacing a researcher's judgment.
+
+## 3. Approach
 
 ```mermaid
 flowchart TD
-  A[CSV, JSON, interviews, tickets, reviews] --> B[Normalize and validate]
-  B --> C[Embedding adapter]
-  C --> D[Topic clustering]
-  D --> E[Problem detection]
-  E --> F[Opportunity generation]
-  F --> G[Transparent scoring]
-  G --> H[Evidence retrieval]
-  H --> I[Opportunity dashboard]
+  A[Feedback records] --> B[Normalize and validate]
+  B --> C[128-dim feature-hashing vectors]
+  C --> D[Incremental cosine clustering]
+  D --> E[Pain and request regexes]
+  E --> F[Opportunity and weighted score]
+  F --> G[Evidence links back to records]
+  G --> H[Dashboard or API]
 ```
 
-The default embedding adapter is a deterministic 128-dimensional feature-hashing baseline that runs locally and in Cloudflare Workers. Optional Workers AI, Vectorize, or PostgreSQL/pgvector paths can be evaluated later without making paid services mandatory.
+The default cluster threshold is 0.28. Pain and request counts come from word lists in `pipelines/discovery.js`.
 
-## What is implemented
+The score is `Math.round(100 * weighted sum)` of these components. Each component is capped at 1 before weighting.
 
-- CSV and JSON connector contracts with multiline CSV support
-- Strict normalized record validation
-- Deterministic local embeddings
-- Incremental cosine-similarity clustering
-- Pain and request signal extraction
-- Evidence-backed opportunity generation
-- Transparent five-component opportunity score
-- Confidence, source counts, affected segments, and recommended experiments
-- Evidence retrieval from every opportunity to its original records
-- Local-first responsive light/dark dashboard
-- Secured Cloudflare Worker API
-- Optional Cloudflare D1 history
-- Optional PostgreSQL + pgvector Docker environment
-- Versioned JSON schemas
-- Evaluation harness and seed dataset
-- Automated algorithm, connector, agent, API, and evidence tests
-- PRD, product strategy, metrics, and architecture documents
+| Component | Weight | Computation |
+|---|---:|---|
+| Frequency | 32% | cluster size / max(3, 20% of the corpus) |
+| Source breadth | 20% | distinct sources / 3 |
+| Customer breadth | 18% | distinct customer ids / 5. When no record has a customer id, the record count is used instead of the id count |
+| Segment breadth | 15% | distinct segments / 3 |
+| Recency | 15% | 45-day half-life of the average evidence age, measured from the newest timestamp in that batch |
 
-## Example opportunity
+The result also includes a heuristic `confidence`: `0.42 + 0.08 × cluster size + 0.05 × distinct sources`, capped at 0.95. It also includes `sourceCounts`, `affectedSegments`, and `recommendedExperiment`. The score is a review order. It does not estimate business value, revenue, or feasibility.
+
+The returned `model` string is `local-hashed-semantic-baseline-v1`. The implementation is feature hashing of tokens.
+
+## 4. What exists today
+
+- A browser dashboard in `apps/web/` with a light/dark toggle. Input is one `segment|source|feedback text` line per record. **Load sample** fills six sample lines. **Discover opportunities** analyzes them locally.
+- The pipeline in `pipelines/discovery.js`. `npm run build` copies it to `apps/web/discovery.js`. That copy is gitignored.
+- A Cloudflare Worker in `backend/src/worker.js` that serves the dashboard and the API:
+  - `GET /api/health` is public.
+  - `POST /api/discover` accepts a JSON array of records, or `{"records":[...],"options":{...}}`, up to 1,000 records. `normalizeRecord` requires `text`. Aliases such as `feedback` or `comment` are ignored here.
+  - Requests that send an `Origin` header must match an entry in `ALLOWED_ORIGINS` exactly, or the worker returns 403. A request with no `Origin` header, such as the `curl` example below, skips that check and still needs the bearer token.
+  - `GET /api/opportunities` reads D1. The default `limit` is 25 and the maximum is 100. The response includes title, problem, score, confidence, counts, segments, keywords, and experiment. It does not include the stored evidence text. With no D1 binding the route returns 503.
+- Optional D1 history. `persist` runs only when `env.DB` is set. `backend/wrangler.jsonc` binds D1 database `discovery-engine-db`, so local `wrangler dev` does persist. Apply `backend/migrations/0001_initial.sql` first. Stored opportunity rows include the raw evidence JSON.
+- CSV and JSON libraries in `connectors/csv.js` and `connectors/json.js`. The CSV parser accepts quoted multiline fields. Neither the dashboard nor the worker imports these modules.
+- A template brief helper in `agents/opportunity-agent.js`. It copies fields from an existing opportunity and lists evidence ids. The dashboard and the worker do not call it.
+- JSON Schema files in `backend/schema/`. The pipeline sets `schemaVersion` to `"1.0.0"`. The worker does not validate requests or responses against those files.
+- [PRD](docs/PRD.md), [product strategy](docs/PRODUCT_STRATEGY.md), [metrics](docs/METRICS.md), and [architecture](docs/ARCHITECTURE.md).
+- **22 tests** in `tests/*.test.js`, invoked by `npm test`. `npm run check` builds the web copy, syntax-checks the pipeline, connectors, worker, and dashboard, then runs those tests.
+- GitHub Actions (`.github/workflows/ci.yml`) runs `npm run check` and `npm run evaluate` on Node.js 20 for pushes to `main` and for pull requests. The latest completed run on `main` succeeded when checked on 2026-10-20.
+- A Docker Compose file for PostgreSQL with pgvector (`pgvector/pgvector:pg17`). `backend/postgres/001_schema.sql` creates a `vector(384)` column and an HNSW cosine index. The worker does not connect to that database. The baseline vectors are 128-dimensional.
+
+## 5. How success would be measured
+
+From [docs/METRICS.md](docs/METRICS.md). Nothing in the repository is a measured value for these.
+
+| Metric | Definition | Status |
+|---|---|---|
+| North star | Accepted evidence-backed opportunities per discovery cycle. An opportunity counts when a PM accepts it as worth further discovery and its cited evidence is valid. | Not yet measured |
+| Insight precision | Accepted surfaced opportunities / reviewed surfaced opportunities | Not yet measured |
+| Evidence validity | Correctly supporting citations / audited citations | Not yet measured |
+| Time to first reviewed opportunity | Median time from import to first reviewed opportunity | Not yet measured |
+| Guardrail | Percentage of high-impact opportunities supported by only one source | Not yet measured |
+
+`npm run evaluate` reads `evaluation/seed.json` and prints:
 
 ```json
 {
-  "title": "Improve onboarding / setup / checklist",
-  "problem": "2 pain signals and 1 request signal across 3 records.",
-  "score": 82,
-  "confidence": 0.81,
-  "evidenceCount": 3,
-  "sourceCounts": { "support": 2, "interview": 1 },
-  "affectedSegments": ["New SMB users"],
-  "recommendedExperiment": "Prototype a focused onboarding improvement and test task completion.",
-  "evidence": [{ "id": "ticket-42", "source": "support", "text": "…" }]
+  "datasetSize": 4,
+  "opportunityCount": 2,
+  "evidenceTraceability": 1,
+  "evidenceCoverage": 1,
+  "warning": "Seed metrics validate plumbing, not production insight precision."
 }
 ```
 
-## Repository map
+That output checks the metric code on four seed records. It is not a measure of insight quality.
 
-```text
-apps/web/              Local-first opportunity dashboard
-backend/               Cloudflare Worker, D1 migration, schemas, pgvector setup
-connectors/            CSV/JSON adapters and connector contract
-pipelines/             Discovery, clustering, scoring, evidence retrieval
-agents/                Evidence-grounded opportunity brief generator
-evaluation/            Seed dataset and metric computation
-tests/                 Unit and HTTP route tests
-docs/                  PRD, strategy, metrics, and architecture
-docker-compose.yml     Optional local PostgreSQL/pgvector environment
-```
+## 6. Trade-offs and limitations
+
+- Feature hashing matches shared tokens. Paraphrases that use different words stay in different clusters unless a later labeled benchmark supports another representation.
+- Clustering and ids such as `opportunity-1` apply to a single request. A later request starts over.
+- Titles are `Improve` plus up to three frequent tokens, or `Review uncategorized feedback`.
+- The score omits revenue, strategy fit, effort, and causal impact.
+- The dashboard path and the worker path are the end-to-end inputs: pipe-delimited lines in the browser, and JSON records with `text` on `POST /api/discover`. The CSV and JSON connector modules are tested libraries only.
+- Slack, Zendesk, Intercom, Reddit, Apple and Google reviews, product analytics, interview repositories, Workers AI, and Vectorize are named in `connectors/README.md` or `docs/ARCHITECTURE.md` as future work. `wrangler.jsonc` has no Workers AI or Vectorize binding.
+- D1 stores raw evidence on the opportunity row. Consent, retention, deletion, and tenant isolation are undefined here. One bearer token fits a personal demo. It does not isolate tenants.
 
 ## Quick start
 
-Requires Node.js 20 or newer.
+`npm test` and `npm run evaluate` use Node's built-in test runner. CI runs them on Node.js 20.
+
+`npm run dev` uses Wrangler. `backend/package.json` depends on `wrangler@^4.33.1`. There is no lockfile. A fresh install on 2026-10-20 resolved Wrangler 4.151.3, whose package `engines.node` is `>=22.0.0`. Use Node.js 22 or newer for the local dev server. These commands were run on Node.js v22.23.3.
 
 ```bash
 git clone https://github.com/MadanMohan0537/ai-product-discovery-engine.git
 cd ai-product-discovery-engine
 npm install
 npm test
-npm run dev
+npm run evaluate
 ```
 
-Open `http://localhost:8787`. Press **Load sample**, then **Discover opportunities**. Browser analysis stays on the device and needs no token, model download, or database.
-
-## Input format
-
-The dashboard accepts one record per line:
+Dashboard lines:
 
 ```text
 segment|source|feedback text
@@ -140,27 +147,15 @@ New SMB users|interview|Onboarding is confusing and setup is hard
 Enterprise admins|sales|We need SAML SSO before security review
 ```
 
-The programmatic contract is:
+The local API needs a token and the D1 tables. `.env.example` lists `API_TOKEN`, `ALLOWED_ORIGINS`, and `DATABASE_URL`. The worker reads `API_TOKEN` and `ALLOWED_ORIGINS` from Wrangler. No code reads `DATABASE_URL`. Put the token in `backend/.dev.vars`, which is gitignored:
 
-```json
-{
-  "id": "ticket-42",
-  "text": "Setup is confusing",
-  "source": "zendesk",
-  "segment": "New SMB users",
-  "customerId": "customer-7",
-  "timestamp": "2026-09-01T12:00:00Z",
-  "metadata": {}
-}
+```bash
+echo 'API_TOKEN=local-development-token' > backend/.dev.vars
+npm --prefix backend run db:migrate:local
+npm run dev
 ```
 
-## API
-
-| Method | Route | Auth | Purpose |
-|---|---|---|---|
-| `GET` | `/api/health` | Public | Runtime status |
-| `POST` | `/api/discover` | Bearer token | Analyze up to 1,000 records |
-| `GET` | `/api/opportunities?limit=25` | Bearer token | Read persisted ranked opportunities |
+`npm run dev` builds the web assets, then starts Wrangler on <http://localhost:8787>. `backend/wrangler.jsonc` sets `ALLOWED_ORIGINS` to `http://localhost:8787` and binds D1. Without the local migration, `POST /api/discover` returns 422 because `discovery_runs` is missing, and `GET /api/opportunities` returns 500.
 
 ```bash
 curl -X POST http://localhost:8787/api/discover \
@@ -169,104 +164,53 @@ curl -X POST http://localhost:8787/api/discover \
   --data '{"records":[{"text":"Please add SSO","source":"sales","segment":"Enterprise"}]}'
 ```
 
-## Opportunity scoring
+After the migration, that request returns 201 and a body with `opportunityCount`. The same call without the `Authorization` header returns 401.
 
-The MVP avoids an opaque “AI score.” Each score is a weighted combination:
+## Deployment
 
-| Component | Weight | Meaning |
-|---|---:|---|
-| Frequency | 32% | Share of corpus supporting the cluster |
-| Source breadth | 20% | Independent channels represented |
-| Customer breadth | 18% | Distinct customers, when IDs are available |
-| Segment breadth | 15% | Distinct affected segments |
-| Recency | 15% | 45-day evidence half-life |
+Cloudflare Workers is the deploy target. `backend/wrangler.jsonc` is the Wrangler config. Leave the Worker name as `ai-product-discovery-engine` so the `workers.dev` hostname stays the same. The entry point is `backend/src/worker.js` (`main` is `src/worker.js` when Wrangler runs in `backend/`).
 
-Scores prioritize review; they do not calculate business value, causality, revenue, or engineering feasibility.
+Bindings in that config:
 
-## Cloudflare deployment
+| Binding | What it is |
+|---|---|
+| `ASSETS` | Static files from `../apps/web` |
+| `DB` | D1 database `discovery-engine-db`, id `6a88c60f-def8-420e-8bcb-e8560cf13bea` |
+| `ALLOWED_ORIGINS` | Plain var, currently `http://localhost:8787` |
 
-The default path uses assets + Worker + optional D1. Cloudflare currently provides free allocations suitable for prototypes, but limits can change and exceeding them can stop operations rather than remain free.
+`API_TOKEN` is the required secret. It is not in `wrangler.jsonc`. The worker fails closed on `/api/discover` and `/api/opportunities` when it is missing.
+
+`apps/web/discovery.js` is gitignored. Build it before deploying, or the dashboard script import is missing. From the repository root:
 
 ```bash
+npm run build
 cd backend
-npm install
-npx wrangler d1 create discovery-engine-db
-# Replace REPLACE_WITH_D1_DATABASE_ID in wrangler.jsonc
-npm run db:migrate:remote
+npx wrangler d1 migrations apply discovery-engine-db --remote
 npx wrangler secret put API_TOKEN
-npm run deploy
+npx wrangler deploy
 ```
 
-Set `ALLOWED_ORIGINS` to the exact deployed origin. For stateless operation, remove the D1 binding. Never commit `.dev.vars` or real connector credentials.
+`npx wrangler deploy` publishes that Worker directly. For a browser on another origin to call the API, add that origin to `ALLOWED_ORIGINS` in `backend/wrangler.jsonc`. The dashboard does not call the API.
 
-### Optional semantic retrieval
-
-- **Workers AI + Vectorize:** a future Cloudflare-native adapter. The current repository does not claim that adapter is implemented.
-- **PostgreSQL + pgvector:** run `docker compose up -d` for the local database and HNSW cosine index. Application wiring is intentionally left as an evaluated extension, not represented as active persistence.
-
-## Evaluation
-
-```bash
-npm run check
-npm run evaluate
-```
-
-The repository currently has **22 automated tests** covering the algorithms, connectors, opportunity agent, evidence traceability, and HTTP behavior. `npm run check` runs syntax validation and the complete test suite; the GitHub Actions workflow runs the same checks on pushes and pull requests.
-
-The report computes evidence traceability and coverage. The bundled four-record seed validates plumbing only. A real evaluation should add human-labeled theme pairs, opportunity acceptance decisions, evidence-validity audits, cluster stability, and unsupported-claim review.
-
-See [METRICS.md](docs/METRICS.md) for the complete measurement plan.
-
-## Product documentation
-
-- [PRD](docs/PRD.md)
-- [Product strategy](docs/PRODUCT_STRATEGY.md)
-- [Success and guardrail metrics](docs/METRICS.md)
-- [Architecture and scaling boundaries](docs/ARCHITECTURE.md)
-
-The opportunity-solution-tree concept informs the product direction: opportunities should connect to a desired product outcome and remain distinct from possible solutions. The MVP therefore recommends experiments but does not silently turn them into roadmap commitments.
-
-## Product principles
-
-- **Evidence before narrative:** every opportunity links back to source records.
-- **Inspectable prioritization:** score components and weights are visible and replaceable.
-- **Human decision ownership:** outputs support discovery; they do not make roadmap decisions.
-- **Baseline before complexity:** semantic models earn adoption through measured improvement.
-- **Privacy by deployment choice:** teams can analyze locally or operate their own secured Worker.
-
-## Security and privacy
-
-- Browser analysis sends no feedback to a server.
-- API access fails closed without `API_TOKEN`.
-- Cross-origin requests require an exact allowlisted origin.
-- Responses include CSP, `nosniff`, no-referrer, and no-store headers.
-- D1 statements are parameterized and writes are bounded in batches.
-- Inputs and batch sizes are bounded.
-- Browser-rendered evidence is escaped.
-- Internal errors are not exposed to clients.
-
-D1 persistence stores raw source evidence so results remain traceable. Before using real customer data, define consent, minimization, retention, deletion, tenant isolation, and access policies. The bearer token is appropriate for a personal demo, not a multi-tenant production service.
-
-## Honest limitations
-
-- Feature hashing provides lexical similarity, not true semantic understanding.
-- Online clustering is scoped to one request and does not preserve topic identity across runs.
-- Opportunity titles are keyword summaries, not generated strategic narratives.
-- Scoring does not include revenue, strategy, effort, or causal impact.
-- The seed dataset is too small for accuracy claims.
-- CSV and JSON are the only end-to-end connectors today.
-- Slack, Zendesk, Intercom, Reddit, app-store, analytics, Workers AI, and Vectorize integrations are roadmap items.
-- PostgreSQL/pgvector infrastructure is supplied for experiments but is not wired into the Worker.
+This remote deploy was not run while checking this README.
 
 ## Roadmap
 
-1. Run a labeled retrieval and cluster-quality benchmark.
-2. Add human merge, split, rename, accept, and reject actions.
-3. Implement stable cross-run opportunity identity and emerging-problem alerts.
-4. Ship one authenticated connector end to end with cursor and retry tests.
-5. Evaluate semantic embeddings against the deterministic baseline.
-6. Add evidence-level redaction, retention, and tenant isolation.
-7. Connect opportunities to explicit product outcomes and experiment results.
+These items are not implemented:
+
+1. A labeled retrieval and cluster-quality benchmark.
+2. Human merge, split, rename, accept, and reject actions.
+3. Stable opportunity identity across runs, and alerts for emerging problems.
+4. One authenticated connector end to end, with cursor and retry tests.
+5. Semantic embeddings evaluated against the baseline.
+6. Redaction, retention, and tenant isolation.
+
+## Related repositories
+
+These are separate repositories. This codebase does not call them.
+
+- [feedback-prioritizer](https://github.com/MadanMohan0537/feedback-prioritizer): a Python and Streamlit feedback collector with vendor adapters and NLP fallbacks.
+- [product-evidence-to-decision-suite](https://github.com/MadanMohan0537/product-evidence-to-decision-suite): a separate suite whose own README describes fifty-one projects from evidence through experiments and governance.
 
 ## License
 
