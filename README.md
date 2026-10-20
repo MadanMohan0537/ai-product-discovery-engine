@@ -129,7 +129,7 @@ That output checks the metric code on four seed records. It is not a measure of 
 
 `npm test` and `npm run evaluate` use Node's built-in test runner. CI runs them on Node.js 20.
 
-`npm run dev` and `npm run deploy` use Wrangler. `backend/package.json` depends on `wrangler@^4.33.1`. There is no lockfile. A fresh install on 2026-10-20 resolved Wrangler 4.151.3, whose package `engines.node` is `>=22.0.0`. Use Node.js 22 or newer for the dev server and for deploy. These commands were run on Node.js v22.23.3.
+`npm run dev` uses Wrangler. `backend/package.json` depends on `wrangler@^4.33.1`. There is no lockfile. A fresh install on 2026-10-20 resolved Wrangler 4.151.3, whose package `engines.node` is `>=22.0.0`. Use Node.js 22 or newer for the local dev server. These commands were run on Node.js v22.23.3.
 
 ```bash
 git clone https://github.com/MadanMohan0537/ai-product-discovery-engine.git
@@ -166,21 +166,33 @@ curl -X POST http://localhost:8787/api/discover \
 
 After the migration, that request returns 201 and a body with `opportunityCount`. The same call without the `Authorization` header returns 401.
 
-Deploy to a Cloudflare account from the repository root so the web pipeline copy is built. `npm run deploy` in `backend/` is only `wrangler deploy` and skips that build. The checked-in `database_id` belongs to the database named in `wrangler.jsonc`. An account that does not own that database needs its own id in that file.
+## Deployment
+
+Cloudflare Workers is the deploy target. `backend/wrangler.jsonc` is the Wrangler config. Leave the Worker name as `ai-product-discovery-engine` so the `workers.dev` hostname stays the same. The entry point is `backend/src/worker.js` (`main` is `src/worker.js` when Wrangler runs in `backend/`).
+
+Bindings in that config:
+
+| Binding | What it is |
+|---|---|
+| `ASSETS` | Static files from `../apps/web` |
+| `DB` | D1 database `discovery-engine-db`, id `6a88c60f-def8-420e-8bcb-e8560cf13bea` |
+| `ALLOWED_ORIGINS` | Plain var, currently `http://localhost:8787` |
+
+`API_TOKEN` is the required secret. It is not in `wrangler.jsonc`. The worker fails closed on `/api/discover` and `/api/opportunities` when it is missing.
+
+`apps/web/discovery.js` is gitignored. Build it before deploying, or the dashboard script import is missing. From the repository root:
 
 ```bash
+npm run build
 cd backend
-npx wrangler d1 create discovery-engine-db
-# replace database_id in backend/wrangler.jsonc
-npm run db:migrate:remote
+npx wrangler d1 migrations apply discovery-engine-db --remote
 npx wrangler secret put API_TOKEN
-cd ..
-npm run deploy
+npx wrangler deploy
 ```
 
-For a browser on another origin to call the API, add that origin to `ALLOWED_ORIGINS`. The dashboard itself does not call the API.
+`npx wrangler deploy` publishes that Worker directly. For a browser on another origin to call the API, add that origin to `ALLOWED_ORIGINS` in `backend/wrangler.jsonc`. The dashboard does not call the API.
 
-Remote deploy was not run as part of checking this README.
+This remote deploy was not run while checking this README.
 
 ## Roadmap
 
